@@ -1,4 +1,5 @@
 from pymclevel import alphaMaterials, BoundingBox
+import operator
 
 inputs = (
     ("Hello World", "label"),
@@ -6,13 +7,33 @@ inputs = (
     ("Filling", alphaMaterials.Dirt),
     )
 
+material1, material2 = (-1,-1), (-1,-1)
+
 def perform(level, box, options):
+    global material1, material2
+    
+    mat1, mat2 = adaptMaterials(level, box)
+    print '############222#############'
+    print mat1
+    print mat2
+    if (mat1[0]==-1):
+        material1=(1,6)
+    else:
+        material1=mat1
+    if (mat2[0]==-1):
+        material2=(5,5)
+    else:
+        material2=mat2
+    buildHouse(level, box)
+   
+
+def buildHouse(level, box):
     clearSpace(level, box)
     generateFloor(level, box)
     generateWalls(level, box)
     generateCeiling(level, box)
-    generateDispenser(level, box)
-   
+    #generateDispenser(level, box)
+
 def clearSpace(level, box):
     x=box.minx
     y=box.miny
@@ -57,29 +78,33 @@ def generateFloor(level, box):
     y=box.miny+1
     z=box.minz
     
+    global material2
+    
     for i in range (x, x+16):
         for j in range(z,z+16):
-            level.setBlockAt(i,y,j,1)
-            level.setBlockDataAt(i,y,j,6)
+            level.setBlockAt(i,y,j,material2[0])
+            level.setBlockDataAt(i,y,j,material2[1])
 
 def generateWalls(level, box):
     i=box.minx+1
     j=box.miny+2
     k=box.minz+1
     
+    global material1
+    
     for y in range(j, j+4):
-        level.setBlockAt(i+13,y,k+13,1)
-        level.setBlockDataAt(i+13,y,k+13,6)
+        level.setBlockAt(i+13,y,k+13,material1[0])
+        level.setBlockDataAt(i+13,y,k+13,material1[1])
         for x in range(i, i+13):
-             level.setBlockAt(x,y,k, 1)
-             level.setBlockDataAt(x,y,k, 6)
-             level.setBlockAt(x,y,k+13, 1)
-             level.setBlockDataAt(x,y,k+13, 6)
+             level.setBlockAt(x,y,k, material1[0])
+             level.setBlockDataAt(x,y,k, material1[1])
+             level.setBlockAt(x,y,k+13, material1[0])
+             level.setBlockDataAt(x,y,k+13, material1[1])
         for z in range(k, k+13):
-             level.setBlockAt(i,y,z, 1)
-             level.setBlockDataAt(i,y,z, 6)
-             level.setBlockAt(i+13,y,z, 1)
-             level.setBlockDataAt(i+13,y,z, 6)
+             level.setBlockAt(i,y,z, material1[0])
+             level.setBlockDataAt(i,y,z, material1[1])
+             level.setBlockAt(i+13,y,z, material1[0])
+             level.setBlockDataAt(i+13,y,z, material1[1])
 
     level.setBlockAt(i+1,j,k, 186) #Gate
     level.setBlockAt(i+1,j+1,k, 0)
@@ -103,4 +128,39 @@ def generateCeiling(level, box):
                 level.setBlockDataAt(i,y,j,6)
  
 def adaptMaterials(level, box):
+    xmin=box.minx
+    ymin=box.miny
+    zmin=box.minz
     
+    xmax=box.maxx
+    ymax=box.maxy
+    zmax=box.maxz
+    
+    countBlock = dict()
+    ignoreBlock = [0,2,3,7,8,9,10,11,12,13,18]
+    
+    mat1 = (-1,-1)
+    mat2= (-1,-1)
+    
+    for i in range (xmin, xmax):
+        for j in range (ymin, ymax):
+            for k in range (zmin, zmax):
+                typeBlock = level.blockAt(i,j,k)
+                dataBlock = level.blockDataAt(i,j,k)
+                if not ( 1 <= dataBlock <= 200):
+                    dataBlock=0
+                block=(typeBlock,dataBlock)
+                if not (typeBlock in ignoreBlock):
+                    if block in countBlock:
+                        countBlock[block]+=1
+                    else:
+                        countBlock[block]=1
+    
+    if len(countBlock)>0:
+        #Get the most present block
+        mat1 = max(countBlock.iteritems(), key=operator.itemgetter(1))[0]
+        countBlock.pop(mat1)
+        if len(countBlock) > 0:
+            mat2 = max(countBlock.iteritems(), key=operator.itemgetter(1))[0]
+    print '#########################'
+    return mat1, mat2
