@@ -1,5 +1,6 @@
 from pymclevel import alphaMaterials, BoundingBox
 import operator
+import math
 
 inputs = (
     ("Hello World", "label"),
@@ -13,9 +14,6 @@ def perform(level, box, options):
     global material1, material2
     
     mat1, mat2 = adaptMaterials(level, box)
-    print '############222#############'
-    print mat1
-    print mat2
     if (mat1[0]==-1):
         material1=(1,6)
     else:
@@ -24,7 +22,8 @@ def perform(level, box, options):
         material2=(5,5)
     else:
         material2=mat2
-    buildHouse(level, box)
+    #buildHouse(level, box)
+    buildIf(level, box)
    
 
 def buildHouse(level, box):
@@ -137,11 +136,10 @@ def adaptMaterials(level, box):
     zmax=box.maxz
     
     countBlock = dict()
-    ignoreBlock = [0,2,3,7,8,9,10,11,12,13,18]
+    ignoreBlock = [0,2,3,6,7,8,9,10,11,12,13,18,31,32,37,38,39,40,175]
     
     mat1 = (-1,-1)
     mat2= (-1,-1)
-    
     for i in range (xmin, xmax):
         for j in range (ymin, ymax):
             for k in range (zmin, zmax):
@@ -162,5 +160,37 @@ def adaptMaterials(level, box):
         countBlock.pop(mat1)
         if len(countBlock) > 0:
             mat2 = max(countBlock.iteritems(), key=operator.itemgetter(1))[0]
-    print '#########################'
     return mat1, mat2
+
+def buildIf(level, box):
+    xmin=box.minx
+    ymin=box.miny
+    zmin=box.minz
+    
+    xmax=box.maxx
+    zmax=box.maxz
+    
+    width=math.fabs(float(xmax-xmin))
+    length=math.fabs(float(zmin-zmax))
+    
+    cptGround=0
+    cptAir=0
+    okBlock = [1,2,3,4,5,12,13,24,35,179]
+    airAndGrassBlock =[0,18,31,32,37,38,39,40,6,175]
+
+    for i in range(xmin, xmax):
+        for j in range(zmin, zmax):
+            if (level.blockAt(i,ymin+1,j) in okBlock):
+                cptGround+=1
+            if (level.blockAt(i, ymin+2,j ) in airAndGrassBlock):
+                cptAir+=1
+    
+    print(cptGround/(width*length))
+    print (cptAir/(width*length))
+    if (cptGround/(width*length)>0.7
+        and cptAir/(width*length)>0.7):
+        for i in (xmin, xmax):
+            for j in (zmin, zmax):
+                if (level.blockAt(i, ymin, j)==0):
+                    level.setBlockAt(i, ymin, j,2)
+        buildHouse(level, box)
