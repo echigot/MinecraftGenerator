@@ -2,6 +2,7 @@ from pymclevel import alphaMaterials, BoundingBox
 import operator
 import math
 import utilityFunctions as uf
+import numpy as np
 
 inputs = (
     ("Hello World", "label"),
@@ -11,7 +12,7 @@ inputs = (
 
 material1, material2 = (-1,-1), (-1,-1)
 
-
+airAndGrassBlock =[0,18,31,32,37,38,39,40,6,78,175]
 x, y, z = 0,0,0
 matrix = None
 updated = None
@@ -21,7 +22,7 @@ def perform(level, box, options):
     
     matrix, updated, x, y, z = uf.matrix(level, box)
 
-    fall =[12,13]
+    fall =[12,13,252]
     mat1, mat2 = adaptMaterials(level, box)
     if (mat1[0]==-1):
         material1=(1,6)
@@ -99,48 +100,28 @@ def generateWalls(level, box, j):
     k=box.minz+1
     
     global material1
-    #idmat=material1[0]
-    #data=material1[1]
     
     for y in range(j, j+4):
-        #level.setBlockAt(i+13,y,k+13,idmat)
-        #level.setBlockDataAt(i+13,y,k+13,data)
-        updateBlock(14,y-j+2,14, material1)
+        updateBlock(14,y,14, material1)
+        updateBlock(3, y, 2, material1)
+        updateBlock(3,y,3, material1)
         
-        updateBlock(3, y-j+2, 2, material1)
-        #level.setBlockAt(i+2, y, k+1, idmat)
-        #level.setBlockDataAt(i+2, y, k+1, data)
-        
-        updateBlock(3,y-j+2,3, material1)
-        #level.setBlockAt(i+2,y,k+2, idmat)
-        #level.setBlockDataAt(i+2,y,k+2, data)
         for x in range(i, i+13):
-             #level.setBlockAt(x,y,k, idmat)
-             #level.setBlockDataAt(x,y,k, data)
-             updateBlock(x-i+1, y-j+2, 1, material1)
-             #level.setBlockAt(x,y,k+13, idmat)
-             #level.setBlockDataAt(x,y,k+13, data)
-             updateBlock(x-i+1,y-j+2,14, material1)
+             updateBlock(x-i+1, y, 1, material1)
+             updateBlock(x-i+1,y,14, material1)
              
         for z in range(k, k+13):
-             #level.setBlockAt(i,y,z, idmat)
-             #level.setBlockDataAt(i,y,z, data)
-             updateBlock(1,y-j+2, z-k+1, material1)
+             updateBlock(1,y, z-k+1, material1)
+             updateBlock(14, y, z-k+1, material1)
              
-             #level.setBlockAt(i+13,y,z, idmat)
-             #level.setBlockDataAt(i+13,y,z, data)
-             updateBlock(14, y-j+2, z-k+1, material1)
-             
-    #level.setBlockAt(i+1,j,k, 186) #Gate
-    updateBlock(2, 2,1, (186,0))
-    updateBlock(2,2,3, (186,0))
-    #level.setBlockAt(i+1,j+1,k, 0)
-    #level.setBlockAt(i+1,j,k+2, 186)
+    updateBlock(2, j,1, (186,0))#Gate
+    updateBlock(2,j,3, (186,0))
+    updateBlock(2,j+1,1, (0,0))
     
-    for z in range(k+1,k+13): #Hay Bale
-        #level.setBlockAt(i+12,j,z,170)
-        #level.setBlockDataAt(i+12,j,z,8)
-        updateBlock(13, 2, z-k+1, (170,8))
+    for z in range(k+1,k+13): 
+        updateBlock(13, j, z-k+1, (170,8))#Hay Bale
+        updateBlock(12, j-1, z-k+1, (2,0))#Grass for sheeps
+        updateBlock(11, j-1, z-k+1, (2,0))
 
 
 def generateCeiling(level, box, y):
@@ -155,6 +136,9 @@ def generateCeiling(level, box, y):
             else:
                 updateBlock(i-x,y,j-z,material1)
  
+def generateShelter(level, box, y):
+    pass
+    
 def adaptMaterials(level, box):
     xmin=box.minx
     zmin=box.minz
@@ -189,12 +173,12 @@ def adaptMaterials(level, box):
     return mat1, mat2
 
 def buildIf(level, box, height, length, width):
-    global x,y,z, matrix
+    global x,y,z, matrix, airAndGrassBlock
     
     cptGround=0
     cptAir=0
     okBlock = [1,2,3,4,5,12,13,14,15,16,17,20,21,22,24,35,41,42,43,45,60,82,98,125,155,162,179]
-    airAndGrassBlock =[0,18,31,32,37,38,39,40,6,78,175]
+
 
     for i in range (x):
         for j in range(z):
@@ -208,15 +192,60 @@ def buildIf(level, box, height, length, width):
             for j in range(z):
                 if (matrix[i][height][j][0]==0):
                     updateBlock(i, height-1, j, (2,0))
-        buildEnclosure(level, box, height-1)
-        return True
         
+        
+        buildEnclosure(level, box, height-1)
+        
+        for i in range (findBestOrientation(level, box, box.minx, height -1, box.minz)):
+            rotateBuilding(box.minx, height-1, box.minz, 17, 17,6)
+            
+        return True
+     
 def detectGround(level, box):
     global y, matrix
     for i in range (y-1):
         if (buildIf(level, box, i, 17,17)):
             break
     uf.updateWorld(level, box, matrix, updated)
+    
+    
+def findBestOrientation(level, box, x, y, z):
+    #2, j, 1
+    global airAndGrassBlock
+    orientation = {0:0,
+                   1:0,
+                   2:0,
+                   3:0}
+    
+    for i in orientation:
+        for j in range (x,x+3):
+            for k in range (y,y+3):
+                for l in range (z,z+4):
+                    if not (matrix[j][k][l][0] in airAndGrassBlock):
+                        orientation[i]+=1
+        rotateBuilding(x,y,z,17,17,6)
+        
+    return min(orientation.iteritems(), key=operator.itemgetter(1))
+
+def rotateBuilding(x,y,z,width, height, length):
+    global matrix
+    matrixBuilding = [[[(0,0) for k in xrange(width)] for j in xrange(height)] for i in xrange(width)]
+    for i in range (x, x+width):
+        for j in range (y, y+height):
+            for k in range (z, z+length):
+                matrixBuilding[i-x][j-y][k-z]=matrix[i][j][k]
+            
+    matrixLevel = [[(0,0) for k in xrange(length)] for i in xrange(width)]
+    for k in range (height):
+        matrixLevel=matrixBuilding[k]
+        matrixLevel=np.rot90(matrixLevel)
+        matrixBuilding[k]=matrixLevel
+    
+    for i in range (x, x+width):
+        for j in range (y, y+height):
+            for k in range (z,d z+length):
+                matrix[i][j][k]=matrixBuilding[i-x][j-y][k-z]
+        
     
 def buildRichHouse(level, box):
     #18 length
