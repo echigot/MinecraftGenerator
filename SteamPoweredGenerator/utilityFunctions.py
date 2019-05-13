@@ -203,3 +203,7 @@ def updateWorld(level,box, matrix, updated):
             for k in range(z):
                 if (updated[i][j][k]):
                     setBlock(level, matrix[i][j][k], i+posx,j+posy,k+posz)
+                    
+
+
+

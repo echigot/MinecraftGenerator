@@ -15,46 +15,47 @@ import random as rd
 
 
 def perform(level, box, options):
-    #testDivide()
-    print (binarySpacePartitioning(0, 128, 0, 128, 0, 128, []))
+    testDivide()
+    #print (binarySpacePartitioning(0, 128, 0, 128, 0, 128, []))
 
 def divideByTwo(matrix, listOfMatrix, count):
-    
     
     if count >= 2 or matrix == None:
         if matrix != None:
             listOfMatrix.append(matrix)
         return
     
-    x, z = np.shape(matrix)
     
-    a = rd.randint(2,x-1)
-    b = rd.randint(2,z-1)
+    x, y, z, f = np.shape(matrix)
+    
+    if x<7 or y<7:
+        listOfMatrix.append(matrix)
+        return listOfMatrix
+    
+    a = rd.randint(4,x-3)
+    b = rd.randint(4,z-3)
     
     c = rd.randint(1,2)
     
     count +=1
     
     if c==1 :
-        submatrixA = [[matrix[i][k] for k in range (z)] for i in range (a)]
-        submatrixB = [[matrix[i][k] for k in range (z)] for i in range (a,x)]
+        submatrixA = [[[matrix[i][j][k] for k in range (z)]for j in range (y)] for i in range (a)]
+        submatrixB = [[[matrix[i][j][k] for k in range (z)]for j in range (y)] for i in range (a,x)]
         divideByTwo(submatrixA, listOfMatrix, count)
         divideByTwo(submatrixB, listOfMatrix, count)
         
     else:
-        submatrixA = [[matrix[i][k] for k in range (b)] for i in range (x)]
-        submatrixB = [[matrix[i][k] for k in range (b, z)] for i in range (x)]
+        submatrixA = [[[matrix[i][j][k] for k in range (b)]for j in range (y)] for i in range (x)]
+        submatrixB = [[[matrix[i][j][k] for k in range (b, z)]for j in range (y)] for i in range (x)]
         divideByTwo(submatrixA, listOfMatrix, count)
         divideByTwo(submatrixB, listOfMatrix, count)
     
     return listOfMatrix
     
 def testDivide():
-    matrix = [[(i+k*i) for k in range (8)] for i in range (1,9)]
-    
-    print matrix
-    print '#########################'
-    print divideByTwo(matrix, [], 0)
+    #matrix = [[[(i+k*i) for k in range (255)] for j in range (255)] for i in range (1,256)]
+    pass
     
     
 def binarySpacePartitioning(y_init, y_end, x_init, x_end, d_init, d_end, partitions, partition_min=30, valid_min=15):
