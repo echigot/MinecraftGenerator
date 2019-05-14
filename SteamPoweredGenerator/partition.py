@@ -30,16 +30,8 @@ class Partition :
                 self.heightMap[i][j]=heightMapTerrain[x+i][z+j]
         
         if(self.isBuildableBis()):
-            self.buildFloor(self.meanGround-1)
-#        for k in range(y,ymax-1):
-#            if (self.isBuildable(k)):
-#                for i in range (x,xmax):
-#                    for j in range (z,zmax):
-#                        mp.updateBlock(i, k, j, (20,0))
-#                        for iterY in xrange(ymin, (int)(y)):
-#                            BlockIfEmpty(level, (block, data), (int)(x),(int)(iterY),(int)(z))
-#                            if 
-#                break
+            self.buildFloor(self.meanGround)
+            self.buildHouse(self.meanGround)
     
     
     def isBuildable(self, y):
@@ -71,7 +63,6 @@ class Partition :
         
         m = np.mean(h)
         sd = np.std(h)
-        print sd
         if (sd <= 2) :
             self.buildable = True
             self.meanGround=round(m)
@@ -84,6 +75,25 @@ class Partition :
             for j in range (self.zmax-self.z):
                 mp.updateBlock(self.x+i, height, self.z+j, (35,2))
                 for k in xrange(height-5, height):
-                    mp.updateBlock(self.x+i, k, self.z+j, (35,2))
+                    if mp.matrix[self.x+i][k][self.z+j]==(0,0):
+                        mp.updateBlock(self.x+i, k, self.z+j, (35,2))
+                    else: break
                 for k in xrange(height+1, height+10):
-                    mp.updateBlock(self.x+i, k, self.z+j, (0,0))
+                    if mp.matrix[self.x+i][k][self.z+j]!=(0,0):
+                        mp.updateBlock(self.x+i, k, self.z+j, (0,0))
+                    else: break
+                
+    def buildHouse(self,height):
+        height = int(height)-self.box.miny
+        model= [[[(1,6) for z in range(15)]for y in range(5)] for x in range(15)]
+        for i in range (1,14):
+            for j in range (1,14):
+                for k in range (1,4):
+                    model[i][k][j]=(0,0)
+        model[2][1][0]=(71,1)
+        model[2][2][0]=(71,8)
+        
+        for i in range (15):
+            for j in range (15):
+                for k in range (5):
+                    mp.updateBlock(self.x+i,height+k,self.z+j,model[i][k][j])
