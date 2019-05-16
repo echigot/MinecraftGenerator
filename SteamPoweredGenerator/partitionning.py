@@ -65,6 +65,7 @@ def binarySpacePartitioning(y_init, y_end, x_init, x_end, d_init, d_end, partiti
 
 	#logging.info("binarySpacePartitioning params: ", y_init, y_end, x_init, x_end, d_init, d_end, partitions, partition_min, valid_min)
 	
+    
 	if x_end - x_init > partition_min and d_end - d_init > partition_min:
 		if rd.choice([True, False]): split_horizontal = True
 		else: split_vertical = True

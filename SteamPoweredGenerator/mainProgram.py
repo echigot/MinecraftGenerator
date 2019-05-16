@@ -33,25 +33,26 @@ def perform(level, box, options):
     
     width, height, length = uf.getBoxSize(box)
     
-    print uf.getBoxSize(box)
     partitions = part.binarySpacePartitioning(0, height, 0, width, 0, length, [])
     
     
     listOfParts = []
     
-    for partition in partitions:
-        newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box)
-        listOfParts.append(newPart)
-        
-    #for partition in listOfParts:
-    #   pass
+    biggestArea=0
+    biggestPartition = None
     
-#    for partition in listOfParts:
-#        for i in partition.width:
-#            for j in partition.height:
-#                for k in partition.length:
-#                    if (partition.updated[i][j][k]):
-#                        updateBlock(i+partition.x, j+partition.y, k+partition.z, partition.matrix[i][j][k])
+    for partition in partitions:
+        newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box,None)
+        if newPart.area>biggestArea and newPart.buildable:
+            biggestArea=newPart.area
+            biggestPartition=newPart
+        listOfParts.append(newPart)
+
+    biggestPartition.typeOfBlg= biggestPartition.types[1]
+    
+    for partition in listOfParts:
+        if partition.buildable:
+            partition.buildTypeOfBlg()
     
     uf.updateWorld(level, box, matrix, updated)
     
