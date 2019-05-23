@@ -10,6 +10,7 @@ import numpy as np
 import random as rd
 import partitionning as part
 import partition as p
+import nodeV2
 
 
 matrix = None
@@ -43,19 +44,59 @@ def perform(level, box, options):
     
     for partition in partitions:
         newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box,None)
+        
         if newPart.area>biggestArea and newPart.buildable:
             biggestArea=newPart.area
             biggestPartition=newPart
-        listOfParts.append(newPart)
+        if newPart.buildable:
+            listOfParts.append(newPart)
 
     biggestPartition.typeOfBlg= biggestPartition.types[1]
+    biggestPartition.node.parent=biggestPartition.node
     
     for partition in listOfParts:
         if partition.buildable:
             partition.buildTypeOfBlg()
     
-    uf.updateWorld(level, box, matrix, updated)
     
+    #mapBlg=[]
+    for partition1 in range (len(listOfParts)):
+        for partition2 in range (partition1+1, len(listOfParts)):
+            if (nodeV2.distance(listOfParts[partition1].node, listOfParts[partition2].node)<=50):
+                #mapBlg.append((listOfParts[partition1].node, listOfParts[partition1].node, nodeV2.distance(listOfParts[partition1].node, listOfParts[partition2].node)))
+                listOfParts[partition1].node.neighbours.append(listOfParts[partition2].node)
+                listOfParts[partition2].node.neighbours.append(listOfParts[partition1].node)
+    
+    
+    for partition in listOfParts:
+        if len(partition.node.neighbours)==0:
+            closestPart=None
+            minDist=250
+            for partition2 in listOfParts:
+                if partition != partition2 and nodeV2.distance(partition.node, partition2.node)<minDist:
+                    minDist=nodeV2.distance(partition, partition2)
+                    closestPart=partition2
+            partition.node.neighbours.append(closestPart.node)
+            closestPart.node.neighbours.append(partition.node)
+                
+    spanningTree(biggestPartition.node)
+    biggestPartition.node.buildRoads()
+    
+    
+    uf.updateWorld(level, box, matrix, updated)
+    #graph=n.Graph(mapBlg)
+    #print graph.dijkstra(listOfParts[1].node, listOfParts[3].node)
+
+
+def spanningTree(node):
+    node.visited=True
+    for n in node.neighbours:
+        if not n.visited:
+            n.parent=node
+            node.children.append(n)
+            spanningTree(n)
+
+
     
 def updateBlock(x,y,z, material):
     global matrix, updated
@@ -64,7 +105,7 @@ def updateBlock(x,y,z, material):
     
     
 def findTerrain(level, x, z, miny, maxy):
-    global airAndGrassBlock, okBlock
+    global airAndGrassBlock, okBlock, waterAndLavaBlock
     
     for y in xrange(maxy-1, miny-1, -1):
 		if level.blockAt(x, y, z) in airAndGrassBlock:

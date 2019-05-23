@@ -204,6 +204,11 @@ def updateWorld(level,box, matrix, updated):
                 if (updated[i][j][k]):
                     setBlock(level, matrix[i][j][k], i+posx,j+posy,k+posz)
                     
-
+def getOrientation(x1, z1, x2, z2):
+	if x1 < x2:   return "E"
+	elif x1 > x2: return "W"
+	elif z1 < z2: return "S"
+	elif z1 > z2: return "N"
+	else: return None
 
 

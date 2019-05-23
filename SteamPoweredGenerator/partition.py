@@ -8,6 +8,7 @@ Created on Fri Apr 26 13:09:56 2019
 import mainProgram as mp
 import numpy as np
 import random as rd
+import nodeV2
 
 
 class Partition :
@@ -29,16 +30,18 @@ class Partition :
         self.area= (self.xmax-self.x)*(self.zmax-self.z)
         self.typeOfBlg=typeOfBlg
         
+        
         for i in range (xmax-x):
             for j in range (zmax-z):
                 self.heightMap[i][j]=heightMapTerrain[x+i][z+j]
         
         self.isBuildableBis()
+        self.node= nodeV2.Node(x,int(self.meanGround)-self.box.miny,z,None, None)
         
     
     def buildTypeOfBlg(self):
         t = self.types
-        self.buildFloor(self.meanGround)
+        #self.buildFloor(self.meanGround)
         blg =self.typeOfBlg
         
         if blg==t[0] or blg==None:
@@ -69,9 +72,8 @@ class Partition :
         if (cptGround/area>0.4
             and cptAir/area>0.4):
             self.buildable=True
-            return True
         
-        return False
+        return self.buildable
     
     def isBuildableBis(self):
         h= self.heightMap
@@ -100,7 +102,7 @@ class Partition :
                 
     def buildHouse(self,height):
         height = int(height)-self.box.miny
-        model= [[[(1,6) for z in range(15)]for y in range(5)] for x in range(15)]
+        model= [[[(1,6) for z in range(15)]for y in range(10)] for x in range(15)]
         for i in range (1,14):
             for j in range (1,14):
                 for k in range (1,4):
@@ -113,6 +115,8 @@ class Partition :
             for j in range (15):
                 for k in range (5):
                     mp.updateBlock(self.x+i,height+k,self.z+j,model[i][k][j])
+                for k in range (5,10):
+                    mp.updateBlock(self.x+i,height+k,self.z+j,(0,0))
                     
     def buildStation(self,height):
         numFloors= rd.randint(2,4)
@@ -120,6 +124,8 @@ class Partition :
         width = 25 if (self.xmax-self.x)>=25 else self.xmax-self.x
         length = 25 if (self.zmax-self.z)>=25 else self.zmax-self.z
         model= [[[(0,0) for z in range(length)]for y in range((numFloors+2)*7)] for x in range(width)]
+        
+        #arch=[0,0,1,2,3,4]
         
         for j in range (7):
             model[0][j][0]=model[1][j][0]=model[0][j][1]=(1,6)
@@ -131,12 +137,23 @@ class Partition :
                     for k in range (length):
                         model[i][j][k]=(1,6)
         
+        #Faire les arches basses du batiment+vitres en verre au dessus
+#        cpt=0
+#        for x in range (width/2):
+#            if (cpt>=len(arch)-1):
+#                cpt=len(arch)-1
+#            else:
+#                cpt+=1
+#            for y in range (arch[cpt],7):
+#                model[x][y][0]=(1,6)
+#                model[x][y][length]=(1,6)
+#        
+        
+        
         for i in range (1,numFloors+1):
             self.buildFloorsStation(model, width, length, i)
         
         self.buildTopStation(model, width, length, numFloors+1)
-        
-        
         self.updateBuilding(width, height, length, model, (numFloors+2)*7)
     
     def buildFloorsStation(self,model, width, length, floor):
@@ -152,28 +169,30 @@ class Partition :
     
         for i in range(width):
             for k in range(length):
-                model[i][6+floor*7][k]=(1,6)
+                model[i][6+floor*7][k]=(98,0)
     
     def buildTopStation(self,model, width, length, floor):
-        for j in range (4):
-            model[width-1][j+floor*7][length-1]=(1,6)
-            for i in range (width):
-                model[i][j+floor*7][0]=(1,6)
-                model[i][j+floor*7][length-1]=(1,6)
-            for k in range (length):
-                model[0][j+floor*7][k]=(1,6)
-                model[width-1][j+floor*7][k]=(1,6)
+#        for j in range (4):
+#            model[width-1][j+floor*7][length-1]=(1,6)
+#            for i in range (width):
+#                model[i][j+floor*7][0]=(1,6)
+#                model[i][j+floor*7][length-1]=(1,6)
+#            for k in range (length):
+#                model[0][j+floor*7][k]=(1,6)
+#                model[width-1][j+floor*7][k]=(1,6)
         
-        for j in range (4,7):
-            for i in range (width-(j-4)):
-                model[i][j+floor*7][i]=(1,6)
-                model[i][j+floor*7][length-1-i]=(1,6)
-            for k in range (length-(j-4)):
-                model[width-k-1][j+floor*7][k]=(1,6)
-                model[k][j+floor*7][k]=(1,6)
+        cpt = 1
+        for j in range (7):
+            for i in range (cpt, width-cpt):
+                model[i][j+floor*7][cpt]=(1,6)
+                model[i][j+floor*7][length-1-cpt]=(1,6)
+            for k in range (cpt, length-cpt):
+                model[width-cpt-1][j+floor*7][k]=(1,6)
+                model[cpt][j+floor*7][k]=(1,6)
+            cpt+=1
     
-    def updateBuilding(self, width, height, length, model, numFloors):
+    def updateBuilding(self, width, y, length, model, height):
         for i in range (width):
             for j in range (length):
-                for k in range (numFloors):
-                    mp.updateBlock(self.x+i,height+k,self.z+j,model[i][k][j])
+                for k in range (height):
+                    mp.updateBlock(self.x+i, y+k,self.z+j,model[i][k][j])
