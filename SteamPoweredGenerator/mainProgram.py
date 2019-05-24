@@ -45,10 +45,10 @@ def perform(level, box, options):
     for partition in partitions:
         newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box,None)
         
-        if newPart.area>biggestArea and newPart.buildable:
-            biggestArea=newPart.area
-            biggestPartition=newPart
         if newPart.buildable:
+            if newPart.area>biggestArea:
+                biggestArea=newPart.area
+                biggestPartition=newPart
             listOfParts.append(newPart)
 
     biggestPartition.typeOfBlg= biggestPartition.types[1]
@@ -74,12 +74,12 @@ def perform(level, box, options):
             minDist=250
             for partition2 in listOfParts:
                 if partition != partition2 and nodeV2.distance(partition.node, partition2.node)<minDist:
-                    minDist=nodeV2.distance(partition, partition2)
+                    minDist=nodeV2.distance(partition.node, partition2.node)
                     closestPart=partition2
             partition.node.neighbours.append(closestPart.node)
             closestPart.node.neighbours.append(partition.node)
                 
-    spanningTree(biggestPartition.node)
+    BFS(biggestPartition.node)
     biggestPartition.node.buildRoads()
     
     
@@ -88,15 +88,32 @@ def perform(level, box, options):
     #print graph.dijkstra(listOfParts[1].node, listOfParts[3].node)
 
 
-def spanningTree(node):
+def DFS(node):
     node.visited=True
     for n in node.neighbours:
         if not n.visited:
             n.parent=node
             node.children.append(n)
-            spanningTree(n)
+            #nodeV2.connectBuildings(n, node)
+            DFS(n)
 
-
+def BFS(node):
+    
+    order=[]
+    
+    order.append(node)
+    while len(order)>0:
+        print len(order)
+        first = order[0]
+        first.visited=True
+        del order[0]
+        for n in first.neighbours:
+            if not n.visited and not n.seen:
+                n.parent=first
+                first.children.append(n)
+                order.append(n)
+                n.seen=True
+        
     
 def updateBlock(x,y,z, material):
     global matrix, updated
