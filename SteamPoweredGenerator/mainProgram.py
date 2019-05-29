@@ -78,9 +78,17 @@ def perform(level, box, options):
             partition.node.neighbours.append(closestPart.node)
             closestPart.node.neighbours.append(partition.node)
       
-    if biggestPartition != None:          
+    if biggestPartition != None:
         BFS(biggestPartition.node)
-        biggestPartition.node.buildRoads()
+        
+    
+    for partition in listOfParts :
+        if partition.node.parent == None:
+            partition.node.parent= biggestPartition.node
+            biggestPartition.node.children.append(partition.node)
+            BFS(partition.node)
+    
+    biggestPartition.node.buildRoads()
     
     for partition in listOfParts:
         if partition.buildable:
@@ -110,7 +118,7 @@ def BFS(node):
                 first.children.append(n)
                 order.append(n)
                 n.seen=True
-        
+    
     
 def updateBlock(x,y,z, material):
     global matrix, updated
