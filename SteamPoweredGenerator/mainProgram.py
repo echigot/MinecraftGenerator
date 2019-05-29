@@ -6,16 +6,17 @@ Created on Fri Apr 26 13:18:30 2019
 """
 
 import utilityFunctions as uf
-import numpy as np
-import random as rd
 import partitionning as part
 import partition as p
 import nodeV2
+import numpy as np
 
 
 matrix = None
 updated = None
 heightMap = None
+
+boxLvl=None
 
 okBlock = [1,2,3,4,5,12,13,14,15,16,17,20,21,22,24,35,41,42,43,45,60,82,98,125,155,162,179]
 airAndGrassBlock =[0,18,31,32,37,38,39,40,6,78,175]
@@ -27,6 +28,9 @@ def perform(level, box, options):
     
     global partitions, matrix, updated
     global heightMap
+    global boxLvl
+    
+    boxLvl=box
     
     heightMap = getHeightMap(level, box)
     
@@ -43,7 +47,7 @@ def perform(level, box, options):
     biggestPartition = None
     
     for partition in partitions:
-        newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box,None)
+        newPart = p.Partition(partition[2], partition[0], partition[4], partition[3], partition[1], partition[5], heightMap, box, 0)
         
         if newPart.buildable:
             if newPart.area>biggestArea:
@@ -51,19 +55,14 @@ def perform(level, box, options):
                 biggestPartition=newPart
             listOfParts.append(newPart)
 
-    biggestPartition.typeOfBlg= biggestPartition.types[1]
-    biggestPartition.node.parent=biggestPartition.node
-    
-    for partition in listOfParts:
-        if partition.buildable:
-            partition.buildTypeOfBlg()
+    if biggestPartition != None:
+        biggestPartition.typeOfBlg= biggestPartition.types[1]
+        biggestPartition.node.parent=biggestPartition.node
     
     
-    #mapBlg=[]
     for partition1 in range (len(listOfParts)):
         for partition2 in range (partition1+1, len(listOfParts)):
             if (nodeV2.distance(listOfParts[partition1].node, listOfParts[partition2].node)<=50):
-                #mapBlg.append((listOfParts[partition1].node, listOfParts[partition1].node, nodeV2.distance(listOfParts[partition1].node, listOfParts[partition2].node)))
                 listOfParts[partition1].node.neighbours.append(listOfParts[partition2].node)
                 listOfParts[partition2].node.neighbours.append(listOfParts[partition1].node)
     
@@ -78,14 +77,16 @@ def perform(level, box, options):
                     closestPart=partition2
             partition.node.neighbours.append(closestPart.node)
             closestPart.node.neighbours.append(partition.node)
-                
-    BFS(biggestPartition.node)
-    biggestPartition.node.buildRoads()
+      
+    if biggestPartition != None:          
+        BFS(biggestPartition.node)
+        biggestPartition.node.buildRoads()
     
-    
+    for partition in listOfParts:
+        if partition.buildable:
+            partition.buildTypeOfBlg()
+            
     uf.updateWorld(level, box, matrix, updated)
-    #graph=n.Graph(mapBlg)
-    #print graph.dijkstra(listOfParts[1].node, listOfParts[3].node)
 
 
 def DFS(node):
@@ -94,16 +95,12 @@ def DFS(node):
         if not n.visited:
             n.parent=node
             node.children.append(n)
-            #nodeV2.connectBuildings(n, node)
             DFS(n)
 
 def BFS(node):
-    
     order=[]
-    
     order.append(node)
     while len(order)>0:
-        print len(order)
         first = order[0]
         first.visited=True
         del order[0]
@@ -117,19 +114,20 @@ def BFS(node):
     
 def updateBlock(x,y,z, material):
     global matrix, updated
-    matrix[x][y][z]=material
-    updated[x][y][z]=True
+    if (0<=x<len(matrix) and 0<=y<len(matrix[0]) and 0<=z<len(matrix[0][0])):
+        matrix[x][y][z]=material
+        updated[x][y][z]=True
     
     
 def findTerrain(level, x, z, miny, maxy):
     global airAndGrassBlock, okBlock, waterAndLavaBlock
     
     for y in xrange(maxy-1, miny-1, -1):
-		if level.blockAt(x, y, z) in airAndGrassBlock:
-			continue
-		elif level.blockAt(x, y, z) in waterAndLavaBlock:
-			return -1
-		else:
+        if level.blockAt(x, y, z) in airAndGrassBlock:
+            continue
+        elif level.blockAt(x, y, z) in waterAndLavaBlock:
+            return -1
+        else:
 			return y
     return -1
 
