@@ -59,7 +59,6 @@ def connectBuildings(n1, n2):
 #            cpt+=1
 #    for j in range (n1.y, n2.y, step(n1.y, n2.y)):
 #        mp.updateBlock(n2.x, j, n1.z,(rd.choice(ore),0))
-    lastHeight=mp.heightMap[n2.x][n1.z]-mp.boxLvl.miny
     
     for k in range (n1.z, n2.z,step(n1.z, n2.z)):
         height=mp.heightMap[n2.x][k]-mp.boxLvl.miny

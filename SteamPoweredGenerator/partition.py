@@ -8,9 +8,19 @@ Created on Fri Apr 26 13:09:56 2019
 import mainProgram as mp
 import numpy as np
 import random as rd
+import utilityFunctions as uf
 import nodeV2
 
 ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
+#main=0, contour=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7
+brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,0), (188,0), (5,1)]
+stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,0), (189,0), (5,2)]
+
+#east, west, south, north, slab
+roof=[(114,0), (114,1),(114,2), (114,3), (44,6)]
+configsRoof=[(0,1),(3,2)]
+
+carpetColor=[0,7,8,9,12,13,15]
 
 class Partition :
     types = ('house', 'station', 'factory', 'farm', 'field', 'ruin')
@@ -32,6 +42,7 @@ class Partition :
         self.area= (self.xmax-self.x)*(self.zmax-self.z)
         self.typeOfBlg=self.types[numType]
         
+        
         self.xBlg=x
         self.zBlg=z
         
@@ -45,7 +56,6 @@ class Partition :
         
         if self.buildable :
             self.node= nodeV2.Node(self.connections[0],None, None)
-            #self.bestCoordinates(self.meanGround, self.size)
         
     
     def buildTypeOfBlg(self):
@@ -54,7 +64,7 @@ class Partition :
         blg =self.typeOfBlg
         
         if blg==t[0] or blg==None:
-            self.buildHouse(self.meanGround+1)
+            self.buildHouse(self.meanGround)
         if blg==t[1]:
             self.buildStation(self.meanGround+1)
         if blg==t[2]:
@@ -62,30 +72,44 @@ class Partition :
         
     def bestCoordinates(self, y, size):
         minDif= 100
-        bestX=0
-        bestZ=0
+        bestC=0
         cpt=0
-        #Try to add the last column and substract the first one
-        #Careful with the first and last line
-        for i in range (self.xmax-self.x-size):
-            for k in range(self.zmax-self.z-size):
-                for x in range (size):
-                    for z in range (size):
-                        if mp.matrix[self.x+i][self.heightMap[i][k]][self.z+k] in ore:
-                            cpt+=100
-                        else:
-                            cpt+= max(self.heightMap[i][k], y)-min(self.heightMap[i][k], y)
-                        
-                if cpt<minDif:
-                    cpt=minDif
-                    bestX=i
-                    bestZ=k
-                if cpt<=10: break
         
-                cpt=0
-        
-        self.x+=bestX
-        self.z+=bestZ
+        for i in range(size):
+            for k in range (size):
+                cpt+=self.heightMap[i][k]
+                
+#        if cpt<minDif:
+#            cpt=minDif
+#            bestX=i
+#            bestZ=k
+            
+        fence = [(183,0), (188,0),(184,0), (189,0)]
+        border=False
+        for i in range (1, min((self.xmax-self.x-size),(self.zmax-self.z-size))):
+            for n in range (size):
+                cpt+=abs(self.heightMap[i+n][i]-y)
+                cpt+=abs(self.heightMap[i][i+n]-y)
+                cpt-=abs(self.heightMap[i-1][i-1+n]-y)
+                cpt-=abs(self.heightMap[i-1+n][i-1]-y)
+                if border:
+                    cpt-=113
+                    border=False
+                if mp.matrix[i+n][i] in fence or mp.matrix[i][i+n] in fence :
+                    cpt+=113
+                    border=True
+                
+                
+                
+            cpt+= abs(self.heightMap[i-1][i-1]- y)
+            cpt-= abs(self.heightMap[i+n][i+n]- y)
+                    
+            if cpt<minDif:
+                cpt=minDif
+                bestC=i
+                
+        self.x+=bestC+2
+        self.z+=bestC+2
         
     def isBuildable(self, y):
         cptGround=0
@@ -135,30 +159,80 @@ class Partition :
                     else: break
                 
     def buildHouse(self,height):
+        style = rd.choice([stone, brick])
+        numberRooms= rd.randint(2,3)
         height = int(height)-self.box.miny
-        model= [[[(1,6) for z in range(self.size)]for y in range(10)] for x in range(self.size)]
-        for i in range (1,self.size-1):
-            for j in range (1,self.size-1):
-                for k in range (0,4):
-                    model[i][k][j]=(0,0)
         
-        for i in range (self.size):
+        self.buildFences(style)
+        
+        self.bestCoordinates(self.meanGround, self.size)
+        
+        model= [[[None for z in range(self.size)]for y in range(12)] for x in range(self.size)]
+        
+        #floor & ceiling
+        for i in range(numberRooms*5):
+            for j in range(self.size):
+                for k in range(12):
+                    model[i][k][j]=(0,0)
+                if (3<=i<numberRooms*5-3 and 4<=j<self.size-4):
+                    model[i][0][j]=(169,0) #sea lantern
+                    model[i][1][j]=(171, rd.choice(carpetColor))
+                else:
+                    model[i][0][j]=style[7]
+                model[i][5][j]=style[7]
+                
+        #walls
+        for k in range (6):
+            for i in range (numberRooms*5):
+                model[i][k][0]=style[0]
+                model[i][k][self.size-1]=style[0]
             for j in range (self.size):
-                for k in range (5,10):
-                    model[i][k][j]=(0,0)
-                    
-        model[2][0][0]=(193,1)
-        model[2][1][0]=(193,8)
+                model[0][k][j]=style[0]
+                model[numberRooms*5-1][k][j]=style[0]
         
-#        for i in range (15):
-#            for j in range (15):
-#                for k in range (5):
-#                    mp.updateBlock(self.x+i,height+k,self.z+j,model[i][k][j])
-#                for k in range (5,15):
-#                    mp.updateBlock(self.x+i,height+k,self.z+j,(0,0))
+        #windows
+        for i in [2,3,4,6,7,8,10,11,12]:
+            model[numberRooms*5-1][3][i]=model[numberRooms*5-1][2][i]=style[2]
+            model[0][3][i]=model[0][2][i]=style[2]
+        
+        nbRot= self.nbRotations()
+        roof1= roof[configsRoof[np.mod(nbRot,2)][0]]
+        roof2= roof[configsRoof[np.mod(nbRot,2)][1]]
+        
+        #roof
+        for n in range(numberRooms):
+            for j in range (2):
+                for i in range(j+1,4-j):
+                    model[i+5*n][j+6][0]=model[i+5*n][j+6][14]=style[0]
+                for k in range(15):
+                    model[5*n+j][j+6][k]=model[5*n+j][j+6][k]=roof1
+                    model[5+5*n-j-1][j+6][k]=model[5+5*n-j-1][j+6][k]=roof2
+            for k in range(15):
+                model[5*n+2][8][k]=roof[4]
+          
+        model[2][1][0]=style[3]
+        model[2][2][0]=style[4]
+        
+        model = self.rotateHouse(model, nbRot)
+        
         
         self.updateBuilding(self.size, height, self.size, model, 10)
-                    
+    
+    def buildFences(self, style):
+        width = self.xmax-self.x
+        length=self.zmax-self.z
+        deltaHeight=np.amax(self.heightMap)-np.amin(self.heightMap)+2
+        model= [[[None for z in range(length)]for y in range(deltaHeight)] for x in range(width)]
+        for i in range (width):
+            print self.heightMap[i][0]+1-np.amin(self.heightMap)
+            model[i][self.heightMap[i][0]+1-np.amin(self.heightMap)][0]=model[i][self.heightMap[i][length-1]+1-np.amin(self.heightMap)][length-1]=style[6]
+        for j in range (length):
+            model[0][self.heightMap[0][j]+1-np.amin(self.heightMap)][j]=model[width-1][self.heightMap[width-1][j]+1-np.amin(self.heightMap)][j]=style[6]
+        
+        model[0][0][1]=style[5]
+        
+        self.updateBuilding(width, int(np.amin(self.heightMap))-self.box.miny, length, model, deltaHeight)
+        
     def buildStation(self,height):
         numFloors= rd.randint(2,4)
         height = int(height)-self.box.miny
@@ -224,16 +298,11 @@ class Partition :
     
     def updateBuilding(self, width, y, length, model, height):
         
-        for i in range (-2, width+2):
-            for j in range (-2, length+2):
-                for k in range (height):
-                    if (self.x+i>0 and y+k>0 and self.z+j>0):
-                        mp.updateBlock(self.x+i,y+k,self.z+j,(0,0))
-                    
         for i in range (width):
             for j in range (length):
                 for k in range (height):
-                    mp.updateBlock(self.x+i,y+k,self.z+j,model[i][k][j])
+                    if model[i][k][j] is not None:
+                        mp.updateBlock(self.x+i,y+k,self.z+j,model[i][k][j])
                 for k in range (-1,-6,-1):
                     if (mp.matrix[self.x+i][y+k][self.z+j]==(0,0)):
                         if (k==-1):
@@ -241,3 +310,10 @@ class Partition :
                         else:
                             mp.updateBlock(self.x+i, y+k, self.z+j, (1,0))
         
+    def rotateHouse(self, model, nbRot):
+        if (self.typeOfBlg == self.types[0]):
+            model = np.rot90(model, nbRot, (0,2))
+            return model
+    
+    def nbRotations(self):
+        return uf.getOrientation(self.x, self.xmax, self.z, self.zmax)
