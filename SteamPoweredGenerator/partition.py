@@ -13,12 +13,12 @@ import nodeV2
 
 ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
 #main=0, contour=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7
-brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,0), (188,0), (5,1)]
-stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,0), (189,0), (5,2)]
+brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1)]
+stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2)]
 
 #east, west, south, north, slab
 roof=[(114,0), (114,1),(114,2), (114,3), (44,6)]
-configsRoof=[(0,1),(3,2)]
+configsRoof=[(0,1),(2,3)]
 
 carpetColor=[0,7,8,9,12,13,15]
 
@@ -224,7 +224,6 @@ class Partition :
         deltaHeight=np.amax(self.heightMap)-np.amin(self.heightMap)+2
         model= [[[None for z in range(length)]for y in range(deltaHeight)] for x in range(width)]
         for i in range (width):
-            print self.heightMap[i][0]+1-np.amin(self.heightMap)
             model[i][self.heightMap[i][0]+1-np.amin(self.heightMap)][0]=model[i][self.heightMap[i][length-1]+1-np.amin(self.heightMap)][length-1]=style[6]
         for j in range (length):
             model[0][self.heightMap[0][j]+1-np.amin(self.heightMap)][j]=model[width-1][self.heightMap[width-1][j]+1-np.amin(self.heightMap)][j]=style[6]
@@ -234,60 +233,57 @@ class Partition :
         self.updateBuilding(width, int(np.amin(self.heightMap))-self.box.miny, length, model, deltaHeight)
         
     def buildStation(self,height):
-        numFloors= rd.randint(2,4)
+        numFloors= rd.randint(3,4)
         height = int(height)-self.box.miny
-        width = 25 if (self.xmax-self.x)>=25 else self.xmax-self.x
-        length = 25 if (self.zmax-self.z)>=25 else self.zmax-self.z
-        model= [[[(0,0) for z in range(length)]for y in range((numFloors+2)*7)] for x in range(width)]
+        minimum=min(self.xmax-self.x, self.xmax-self.x)
+        size = 25 if minimum>=25 else minimum
+        width = size
+        length = size
+        model= [[[(0,0) for z in range(size)]for y in range((numFloors+3)*7)] for x in range(size)]
         
-        #arch=[0,0,1,2,3,4]
+        arch=[0,0,2,4,5,6,6]
+        for i in range(size/2-len(arch)):
+            if np.mod(i, 2)==0: arch.append(6)
+            else: arch.insert(0, 0)
         
         for j in range (7):
-            model[0][j][0]=model[1][j][0]=model[0][j][1]=(1,6)
-            model[width-1][j][0]=model[width-1][j][1]=model[width-2][j][0]=(1,6)
-            model[0][j][length-1]=model[1][j][length-1]=model[0][j][length-2]=(1,6)
-            model[width-1][j][length-1]=model[width-2][j][length-1]=model[width-1][j][length-2]=(1,6)
-            if j==6:
-                for i in range (width):
-                    for k in range (length):
-                        model[i][j][k]=(1,6)
+            for i in range (width):
+                for k in range (length):
+                    model[i][j][k]=(43,5)
         
-        #Faire les arches basses du batiment+vitres en verre au dessus
-#        cpt=0
-#        for x in range (width/2):
-#            if (cpt>=len(arch)-1):
-#                cpt=len(arch)-1
-#            else:
-#                cpt+=1
-#            for y in range (arch[cpt],7):
-#                model[x][y][0]=(1,6)
-#                model[x][y][length]=(1,6)
-#        
+        for n in range (8):
+            for z in range(width):
+                for x in range (size/2):
+                    for y in range (arch[x]):
+                        model[x][y][z]=(0,0)
+            if np.mod(n, 2)==0: model=np.flipud(model)
+            else: model=np.rot90(model,1, (0,2))
         
         
         for i in range (1,numFloors+1):
             self.buildFloorsStation(model, width, length, i)
         
         self.buildTopStation(model, width, length, numFloors+1)
-        self.updateBuilding(width, height, length, model, (numFloors+2)*7)
+        self.updateBuilding(width, height, length, model, (numFloors+3)*7)
     
     def buildFloorsStation(self,model, width, length, floor):
-        for j in range (6):
-            model[width-1][j+floor*7][length-1]=(1,6)
-            for i in range (width):
-                model[i][j+floor*7][0]=(1,6)
-                model[i][j+floor*7][length-1]=(1,6)
-            for k in range (length):
-                model[0][j+floor*7][k]=(1,6)
-                model[width-1][j+floor*7][k]=(1,6)
-    
+        for n in range(8):
+            for j in range (6):
+                model[width-1][j+floor*7][length-1]=(1,6)
+                for i in range (width/2+1):
+                    if np.mod(i,3)==0 or not (1<=j<5): model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(1,6)
+                    else:  model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(102,0)
+                   
+            if np.mod(n, 2)==0: model=np.flipud(model)
+            else: model=np.rot90(model,1, (0,2))
+            
         for i in range(width):
             for k in range(length):
                 model[i][6+floor*7][k]=(98,0)
     
     def buildTopStation(self,model, width, length, floor):        
         cpt = 1
-        for j in range (7):
+        for j in range (14):
             for i in range (cpt, width-cpt):
                 model[i][j+floor*7][cpt]=(1,6)
                 model[i][j+floor*7][length-1-cpt]=(1,6)
