@@ -23,6 +23,7 @@ class Node:
         self.visited=False
         self.seen=False
         
+        
     def buildRoads(self):
         for c in self.children:
             connectBuildings(self,c)

@@ -91,6 +91,12 @@ def perform(level, box, options):
     biggestPartition.node.buildRoads()
     
     for partition in listOfParts:
+        if (partition.node.parent==biggestPartition.node and partition != biggestPartition):
+            partition.wealth=2
+        if (partition.node.parent.parent==biggestPartition.node 
+            and partition != biggestPartition 
+            and partition.node.parent != biggestPartition.node):
+            partition.wealth=1
         if partition.buildable:
             partition.buildTypeOfBlg()
             

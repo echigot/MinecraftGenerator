@@ -12,15 +12,17 @@ import utilityFunctions as uf
 import nodeV2
 
 ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
-#main=0, contour=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7
-brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1)]
-stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2)]
+#main=0, contour=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
+brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1), (134,0)]
+stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2), (135,0)]
+rich=[(155,0),(43,0),(102,0),(197,1),(197,8),(186,0),(191,0),(5,5), (164,0)]
 
 #east, west, south, north, slab
 roof=[(114,0), (114,1),(114,2), (114,3), (44,6)]
 configsRoof=[(0,1),(2,3)]
 
-carpetColor=[0,7,8,9,12,13,15]
+carpetColor=[7,8,12,13,15]
+richCarpetColor=[0,7,8,14,15]
 
 class Partition :
     types = ('house', 'station', 'factory', 'farm', 'field', 'ruin')
@@ -41,6 +43,7 @@ class Partition :
         self.box = box
         self.area= (self.xmax-self.x)*(self.zmax-self.z)
         self.typeOfBlg=self.types[numType]
+        self.wealth=0
         
         
         self.xBlg=x
@@ -108,31 +111,9 @@ class Partition :
                 cpt=minDif
                 bestC=i
                 
-        self.x+=bestC+2
-        self.z+=bestC+2
+        self.x+=bestC+1
+        self.z+=bestC+1
         
-    def isBuildable(self, y):
-        cptGround=0
-        cptAir=0
-        okBlock = [1,2,3,4,5,12,13,14,15,16,17,20,21,22,24,35,41,42,43,45,60,82,98,125,155,162,179]
-        airAndGrassBlock =[0,18,31,32,37,38,39,40,6,78,175]
-    
-        for i in range (self.x, self.xmax):
-            for j in range(self.z, self.zmax):
-                if (mp.matrix[i][y][j][0] in okBlock):
-                    cptGround+=1
-                if (mp.matrix[i][y+1][j][0] in airAndGrassBlock):
-                    cptAir+=1
-              
-        width=self.xmax-self.x
-        length=self.zmax-self.z
-        area = float(width*length)
-        
-        if (cptGround/area>0.4
-            and cptAir/area>0.4):
-            self.buildable=True
-        
-        return self.buildable
     
     def isBuildableBis(self):
         h= self.heightMap
@@ -157,32 +138,54 @@ class Partition :
                     if mp.matrix[self.x+i][k][self.z+j]!=(0,0):
                         mp.updateBlock(self.x+i, k, self.z+j, (0,0))
                     else: break
+              
                 
     def buildHouse(self,height):
-        style = rd.choice([stone, brick])
-        numberRooms= rd.randint(2,3)
+        style = rd.choice([stone, brick, rich])
+        numberRooms=2
+        nbFloor=1
+        carpet=carpetColor
+        
+        if (self.wealth==2):
+            style=rd.choice([rich, rich, brick])
+            numberRooms=3
+            carpet=richCarpetColor
+            nbFloor=2
+        if (self.wealth==1):
+            style=rd.choice([brick, brick, stone])
+            numberRooms= rd.randint(2,3)
+            nbFloor=1
+        if (self.wealth==0):
+            style=rd.choice([brick, stone, stone])
+            numberRooms=2
+            nbFloor=1
+            
+        
         height = int(height)-self.box.miny
         
         self.buildFences(style)
-        
         self.bestCoordinates(self.meanGround, self.size)
+        self.buildHouseFloors(style, carpet, nbFloor, numberRooms, height)
         
-        model= [[[None for z in range(self.size)]for y in range(12)] for x in range(self.size)]
+    
+    def buildHouseFloors(self, style, carpet, nbFloor, numberRooms, height):
+        model= [[[None for z in range(self.size)]for y in range((nbFloor+1)*7)] for x in range(self.size)]
         
         #floor & ceiling
         for i in range(numberRooms*5):
             for j in range(self.size):
-                for k in range(12):
+                for k in range(nbFloor*6):
                     model[i][k][j]=(0,0)
-                if (3<=i<numberRooms*5-3 and 4<=j<self.size-4):
-                    model[i][0][j]=(169,0) #sea lantern
-                    model[i][1][j]=(171, rd.choice(carpetColor))
-                else:
-                    model[i][0][j]=style[7]
-                model[i][5][j]=style[7]
+                
+                for n in range (nbFloor+1):
+                    model[i][n*5][j]=style[7]
+                    if (n==0 and 3<=i<numberRooms*5-3 and 4<=j<self.size-4): #
+                            model[i][0][j]=(169,0) #sea lantern
+                            model[i][1][j]=(171, rd.choice(carpet))
+                    
                 
         #walls
-        for k in range (6):
+        for k in range (nbFloor*5+1):
             for i in range (numberRooms*5):
                 model[i][k][0]=style[0]
                 model[i][k][self.size-1]=style[0]
@@ -191,9 +194,12 @@ class Partition :
                 model[numberRooms*5-1][k][j]=style[0]
         
         #windows
-        for i in [2,3,4,6,7,8,10,11,12]:
-            model[numberRooms*5-1][3][i]=model[numberRooms*5-1][2][i]=style[2]
-            model[0][3][i]=model[0][2][i]=style[2]
+        for n in range (nbFloor):
+            for i in [2,3,4,6,7,8,10,11,12]:
+                model[numberRooms*5-1][3+n*5][i]=model[numberRooms*5-1][2+n*5][i]=style[2]
+                model[0][3+n*5][i]=model[0][2+n*5][i]=style[2]
+                if nbFloor==2:
+                    model[numberRooms*5-1][3+n*5][i]
         
         nbRot= self.nbRotations()
         roof1= roof[configsRoof[np.mod(nbRot,2)][0]]
@@ -203,20 +209,60 @@ class Partition :
         for n in range(numberRooms):
             for j in range (2):
                 for i in range(j+1,4-j):
-                    model[i+5*n][j+6][0]=model[i+5*n][j+6][14]=style[0]
+                    model[i+5*n][j+6+(nbFloor-1)*5][0]=model[i+5*n][j+6+(nbFloor-1)*5][14]=style[0]
                 for k in range(15):
-                    model[5*n+j][j+6][k]=model[5*n+j][j+6][k]=roof1
-                    model[5+5*n-j-1][j+6][k]=model[5+5*n-j-1][j+6][k]=roof2
+                    model[5*n+j][j+6+(nbFloor-1)*5][k]=model[5*n+j][j+6+(nbFloor-1)*5][k]=roof1
+                    model[5+5*n-j-1][j+6+(nbFloor-1)*5][k]=model[5+5*n-j-1][j+6+(nbFloor-1)*5][k]=roof2
             for k in range(15):
-                model[5*n+2][8][k]=roof[4]
+                model[5*n+2][8+(nbFloor-1)*5][k]=roof[4]
+            model[5*n+2][7+(nbFloor-1)*5][7]=(169,0)
           
+        
+        if self.wealth==2:
+            stairs=self.buildStairs(style[7])
+            stairs=np.flip(stairs,2)
+            #stairs=np.rot90(stairs, 2, (0,2))
+            
+            if (rd.randint(2,3)==1):
+                stairs=np.flipud(stairs)
+                
+            else: 
+                for i in range(self.size-2, self.size-6, -1):
+                    for j in range(1,6):
+                        for k in range(self.size-2, self.size-5, -1):
+                            model[i][j][k]=stairs[self.size-i-2][j-1][self.size-k-2]
+            
         model[2][1][0]=style[3]
         model[2][2][0]=style[4]
         
         model = self.rotateHouse(model, nbRot)
+        self.updateBuilding(self.size, height, self.size, model, (nbFloor+1)*7)
+    
+    def buildStairs(self, plank):
+        model= [[[(0,0) for z in range(3)]for y in range(5)] for x in range(4)]
+            
+        model[0][1][1]=model[1][1][1]=(0,0)
+        model[0][0][0]=model[1][0][0]=model[2][0][0]=plank
         
+        for j in range(5):
+            for i in range(2,4):
+                model[i][j][0]=plank
+                
+        for k in range (1,3):
+            for i in range(2):
+                model[i][0][k]=plank
+                
+            for i in range(3):
+                model[i][1][k]=plank
+                
+            for i in range(2,4):
+                model[i][2][k]=plank
         
-        self.updateBuilding(self.size, height, self.size, model, 10)
+            for i in range (3,4):
+                model[i][3][k]=plank
+        
+        return model
+        
     
     def buildFences(self, style):
         width = self.xmax-self.x
@@ -251,13 +297,27 @@ class Partition :
                 for k in range (length):
                     model[i][j][k]=(43,5)
         
+        
+        index=arch.count(0)-1        
         for n in range (8):
             for z in range(width):
                 for x in range (size/2):
                     for y in range (arch[x]):
-                        model[x][y][z]=(0,0)
-            if np.mod(n, 2)==0: model=np.flipud(model)
-            else: model=np.rot90(model,1, (0,2))
+                        if not (model[x][y][z][0]==169):
+                            model[x][y][z]=(0,0)
+            model[index][0][index]=(169,0)
+            model[size-index-1][0][size-index-1]=(169,0)
+            
+            model[width/2-1][5][width/2-1]=(169,0)
+            
+            
+            if np.mod(n, 2)==0:
+                model=np.flipud(model)
+            else: 
+                model=np.rot90(model,1, (0,2))
+            
+            model[width/2+1][5][width/2+1]=(169,0)
+            
         
         
         for i in range (1,numFloors+1):
@@ -273,7 +333,9 @@ class Partition :
                 for i in range (width/2+1):
                     if np.mod(i,3)==0 or not (1<=j<5): model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(1,6)
                     else:  model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(102,0)
-                   
+            model[width/2-1][5+floor*7][width/2-1]=(169,0)
+            model[width/2][5+floor*7][width/2]=(169,0)
+            model[width/2+1][5+floor*7][width/2+1]=(169,0)
             if np.mod(n, 2)==0: model=np.flipud(model)
             else: model=np.rot90(model,1, (0,2))
             
