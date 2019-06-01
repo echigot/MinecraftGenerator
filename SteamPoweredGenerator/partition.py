@@ -12,10 +12,10 @@ import utilityFunctions as uf
 import nodeV2
 
 ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
-#main=0, contour=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
-brick=[(45,0), (155,0), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1), (134,0)]
-stone=[(43,5), (43,0), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2), (135,0)]
-rich=[(155,0),(43,0),(102,0),(197,1),(197,8),(186,0),(191,0),(5,5), (164,0)]
+#main=0, slab=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
+brick=[(45,0), (126,9), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1), (134,0)]
+stone=[(43,5), (126,10), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2), (135,0)]
+rich=[(155,0),(126,13),(102,0),(197,1),(197,8),(186,0),(191,0),(5,5), (164,0)]
 
 #east, west, south, north, slab
 roof=[(114,0), (114,1),(114,2), (114,3), (44,6)]
@@ -23,6 +23,8 @@ configsRoof=[(0,1),(2,3)]
 
 carpetColor=[7,8,12,13,15]
 richCarpetColor=[0,7,8,14,15]
+
+
 
 class Partition :
     types = ('house', 'station', 'factory', 'farm', 'field', 'ruin')
@@ -45,6 +47,7 @@ class Partition :
         self.typeOfBlg=self.types[numType]
         self.wealth=0
         
+        self.listOfFurnitures = []
         
         self.xBlg=x
         self.zBlg=z
@@ -179,10 +182,11 @@ class Partition :
                 
                 for n in range (nbFloor+1):
                     model[i][n*5][j]=style[7]
-                    if (n==0 and 3<=i<numberRooms*5-3 and 4<=j<self.size-4): #
+                    if (n==0 and 3<=i<numberRooms*5-3 and 5<=j<self.size-5):
                             model[i][0][j]=(169,0) #sea lantern
                             model[i][1][j]=(171, rd.choice(carpet))
-                    
+                    model[numberRooms*5-2][n*5][self.size-2]=model[numberRooms*5-2][n*5][1]=(169,0)
+                    model[1][n*5][self.size-2]=model[1][n*5][1]=(169,0)
                 
         #walls
         for k in range (nbFloor*5+1):
@@ -235,9 +239,73 @@ class Partition :
         model[2][1][0]=style[3]
         model[2][2][0]=style[4]
         
+        model = self.buildFurnitures(style, model)
         model = self.rotateHouse(model, nbRot)
         self.updateBuilding(self.size, height, self.size, model, (nbFloor+1)*7)
     
+    
+    def buildFurnitures(self, style, model):
+        self.listOfFurnitures.append(self.makeBed())
+        sink=[[[(118,3)]]]
+        bonusFurniture=[1,2,3,4]
+        
+        for n in range(self.wealth+2):
+            #shelf, bathtub, sink, couch
+            newF=rd.randint(1,4)
+            while not newF in bonusFurniture:
+                newF=rd.randint(1,4)
+                
+            if newF==1:
+                self.listOfFurnitures.append(self.makeShelf(style[1]))
+            if newF==2:
+                self.listOfFurnitures.append(sink)
+            if newF==3:
+                self.listOfFurnitures.append(sink)
+            if newF==4:
+                self.listOfFurnitures.append(sink)
+            
+            bonusFurniture.remove(newF)
+            
+        for f in self.listOfFurnitures:
+            model = integrateMatrix(model, f, rd.randint(2, self.size-2), 1, rd.randint(2, self.size-2))
+        
+        return model
+    
+    def makeShelf(self, slab):
+        width = rd.randint(self.wealth+2, self.wealth+4)
+        
+        matrix=[[[slab for k in range(1)]for j in range(1+self.wealth)]for i in range(width)]
+        
+        return matrix
+        
+    
+    def makeBed(self):
+        if self.wealth==2: 
+            length=4
+            width=3
+            colorBed=(35,0)
+            colors= list(richCarpetColor)
+            colors.remove(0)
+            colorBlanket = rd.choice(colors)
+        else:
+            length=3
+            width=2
+            colorBed=(35,8)
+            colors = list(carpetColor)
+            colors.remove(8)
+            colorBlanket= rd.choice(colors)
+            
+        matrix = [[[colorBed for k in range (length)] for j in range(2)] for i in range (width)]
+        
+        for i in range (width):
+            matrix[i][1][0]=(0,0)
+            for k in range (1,length):
+                matrix[i][1][k]=(171, colorBlanket)
+        
+        
+        return matrix
+    
+
     def buildStairs(self, plank):
         model= [[[(0,0) for z in range(3)]for y in range(5)] for x in range(4)]
             
@@ -299,27 +367,29 @@ class Partition :
         
         
         index=arch.count(0)-1        
+        index1=arch.index(5)
         for n in range (8):
             for z in range(width):
                 for x in range (size/2):
                     for y in range (arch[x]):
                         if not (model[x][y][z][0]==169):
                             model[x][y][z]=(0,0)
+                            
             model[index][0][index]=(169,0)
             model[size-index-1][0][size-index-1]=(169,0)
             
+            model[index1-1][index1-1][index1-1]=(169,0)
+            model[size-index1-1][index1-1][size-index1-1]=(169,0)
+            
             model[width/2-1][5][width/2-1]=(169,0)
+            model[width/2+1][5][width/2+1]=(169,0)
             
             
             if np.mod(n, 2)==0:
                 model=np.flipud(model)
             else: 
                 model=np.rot90(model,1, (0,2))
-            
-            model[width/2+1][5][width/2+1]=(169,0)
-            
-        
-        
+                    
         for i in range (1,numFloors+1):
             self.buildFloorsStation(model, width, length, i)
         
@@ -333,15 +403,21 @@ class Partition :
                 for i in range (width/2+1):
                     if np.mod(i,3)==0 or not (1<=j<5): model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(1,6)
                     else:  model[i][j+floor*7][0]= model[i][j+floor*7][length-1]=(102,0)
+                    
             model[width/2-1][5+floor*7][width/2-1]=(169,0)
             model[width/2][5+floor*7][width/2]=(169,0)
             model[width/2+1][5+floor*7][width/2+1]=(169,0)
+            
+            model[width-2][floor*7-1][length-2]=model[width-2][floor*7-1][1]=(169,0)
+            model[1][floor*7-1][self.size-2]=model[1][floor*7-1][1]=(169,0)
+            
             if np.mod(n, 2)==0: model=np.flipud(model)
             else: model=np.rot90(model,1, (0,2))
             
         for i in range(width):
             for k in range(length):
                 model[i][6+floor*7][k]=(98,0)
+    
     
     def buildTopStation(self,model, width, length, floor):        
         cpt = 1
@@ -375,3 +451,19 @@ class Partition :
     
     def nbRotations(self):
         return uf.getOrientation(self.x, self.xmax, self.z, self.zmax)
+    
+
+def integrateMatrix(bigMatrix, tinyMatrix, x,y,z):
+    for i in range (len(tinyMatrix)):
+        for j in range (len(tinyMatrix[0])):
+            for k in range(len(tinyMatrix[0][0])):
+                if coordinatesInsideMatrix(bigMatrix, x+i, y+j, z+k):
+                    bigMatrix[x+i][y+j][z+k]=tinyMatrix[i][j][k]
+    return bigMatrix
+    
+def coordinatesInsideMatrix(matrix, x,y,z):
+    width=len(matrix)
+    height=len(matrix[0])
+    length=len(matrix[0][0])
+    
+    return (0<=x<width and 0<=y<height and 0<=z<length)
