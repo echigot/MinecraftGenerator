@@ -12,7 +12,7 @@ import utilityFunctions as uf
 import nodeV2
 
 ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
-#main=0, slab=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
+#main=0, woodSlab=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
 brick=[(45,0), (126,9), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1), (134,0)]
 stone=[(43,5), (126,10), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2), (135,0)]
 rich=[(155,0),(126,13),(102,0),(197,1),(197,8),(186,0),(191,0),(5,5), (164,0)]
@@ -239,15 +239,18 @@ class Partition :
         model[2][1][0]=style[3]
         model[2][2][0]=style[4]
         
-        model = self.buildFurnitures(style, model)
+        model = self.buildFurnitures(style, model, numberRooms*5)
         model = self.rotateHouse(model, nbRot)
         self.updateBuilding(self.size, height, self.size, model, (nbFloor+1)*7)
     
     
-    def buildFurnitures(self, style, model):
+    def buildFurnitures(self, style, model, width):
         self.listOfFurnitures.append(self.makeBed())
         sink=[[[(118,3)]]]
+        
         bonusFurniture=[1,2,3,4]
+        
+        
         
         for n in range(self.wealth+2):
             #shelf, bathtub, sink, couch
@@ -255,29 +258,66 @@ class Partition :
             while not newF in bonusFurniture:
                 newF=rd.randint(1,4)
                 
+            fixedX=fixedZ=None
             if newF==1:
                 self.listOfFurnitures.append(self.makeShelf(style[1]))
+                fixedZ=[1, self.size-2]
             if newF==2:
                 self.listOfFurnitures.append(sink)
             if newF==3:
                 self.listOfFurnitures.append(sink)
             if newF==4:
-                self.listOfFurnitures.append(sink)
+                self.listOfFurnitures.append(self.makeCouch(style))
+                fixedX=[1, width-2]
             
             bonusFurniture.remove(newF)
             
+        freeCoord=[]
+        for i in range (1, width-1):
+            for j in range (1, self.size-1):
+                if (model[i][1][j][0]==0 or model[i][1][j] is None):
+                    freeCoord.append((i,j))
+        freeCoord.remove((2,1))
+        
         for f in self.listOfFurnitures:
-            model = integrateMatrix(model, f, rd.randint(2, self.size-2), 1, rd.randint(2, self.size-2))
+            if (fixedX is not None and fixedZ is not None):
+                freeCoordTemp=[ i for i in freeCoord if i[0]==fixedX and i[1]==fixedZ]
+            elif fixedZ is not None:
+                freeCoordTemp=[ i for i in freeCoord if i[1]==fixedZ]
+            elif fixedX is not None:
+                freeCoordTemp=[ i for i in freeCoord if i[0]==fixedX]
+            else: freeCoordTemp=[ i for i in freeCoord]
+            
+            #faire une liste de tuples avec (matrice, fixedX, fixedZ) pour chaque meuble
+            
+            if (len(freeCoordTemp)>0):
+                randx, randz= rd.choice(freeCoordTemp)
+                build=True
+                
+                while (not isSpaceFree(model, f, randx, 1, randz)):
+                    if (len(freeCoordTemp)>1 and (randx, randz) in freeCoordTemp):
+                        freeCoordTemp.remove((randx, randz))
+                        randx, randz= rd.choice(freeCoordTemp)
+                    else:
+                        build=False
+                        break
+                 
+                if build:
+                    model, freeCoord = integrateMatrix(model, f, randx, 1,randz, freeCoord)
         
         return model
     
     def makeShelf(self, slab):
         width = rd.randint(self.wealth+2, self.wealth+4)
-        
         matrix=[[[slab for k in range(1)]for j in range(1+self.wealth)]for i in range(width)]
-        
         return matrix
         
+    def makeCouch(self, style):
+        matrix=[[[style[1] for k in range (self.wealth+3)]for j in range(1)]for i in range(1)]
+        if self.wealth==0: corner=(35,0)
+        else: corner=(35,8)
+        matrix[0][0][0]=matrix[0][0][len(matrix[0][0])-1]=corner
+        return matrix
     
     def makeBed(self):
         if self.wealth==2: 
@@ -342,7 +382,7 @@ class Partition :
         for j in range (length):
             model[0][self.heightMap[0][j]+1-np.amin(self.heightMap)][j]=model[width-1][self.heightMap[width-1][j]+1-np.amin(self.heightMap)][j]=style[6]
         
-        model[0][0][1]=style[5]
+        model[0][1][1]=style[5]
         
         self.updateBuilding(width, int(np.amin(self.heightMap))-self.box.miny, length, model, deltaHeight)
         
@@ -453,13 +493,15 @@ class Partition :
         return uf.getOrientation(self.x, self.xmax, self.z, self.zmax)
     
 
-def integrateMatrix(bigMatrix, tinyMatrix, x,y,z):
+def integrateMatrix(bigMatrix, tinyMatrix, x,y,z, freeCoord):
     for i in range (len(tinyMatrix)):
         for j in range (len(tinyMatrix[0])):
             for k in range(len(tinyMatrix[0][0])):
                 if coordinatesInsideMatrix(bigMatrix, x+i, y+j, z+k):
                     bigMatrix[x+i][y+j][z+k]=tinyMatrix[i][j][k]
-    return bigMatrix
+                    if (x+i,z+k) in freeCoord:
+                        freeCoord.remove((x+i,z+k))
+    return bigMatrix, freeCoord
     
 def coordinatesInsideMatrix(matrix, x,y,z):
     width=len(matrix)
@@ -467,3 +509,13 @@ def coordinatesInsideMatrix(matrix, x,y,z):
     length=len(matrix[0][0])
     
     return (0<=x<width and 0<=y<height and 0<=z<length)
+
+def isSpaceFree(bigMatrix, tinyMatrix, x,y,z):
+    for i in range (len(tinyMatrix)):
+        for j in range (len(tinyMatrix[0])):
+            for k in range(len(tinyMatrix[0][0])):
+                if not (coordinatesInsideMatrix(bigMatrix, x+i, y+j, z+k)
+                 and (bigMatrix[x+i][y+j][z+k][0]==0
+                 or bigMatrix[x+i][y+j][z+k] is None)):
+                    return False
+    return True
