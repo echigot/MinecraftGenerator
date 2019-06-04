@@ -15,7 +15,7 @@ ore=[(1,1),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(43,5),(15,0),(16,0)]
 #main=0, woodSlab=1, windows=2, doorBottom=3, doorTop=4, fence gate=5, fence=6, floor=7, stairs=8
 brick=[(45,0), (126,9), (160,8), (193,1), (193,8), (183,1), (188,0), (5,1), (134,0)]
 stone=[(43,5), (126,10), (160,0), (194,1), (194,8), (184,1), (189,0), (5,2), (135,0)]
-rich=[(155,0),(126,13),(102,0),(197,1),(197,8),(186,0),(191,0),(5,5), (164,0)]
+rich=[(155,0),(126,13),(102,0),(197,1),(197,8),(186,0),(191,1),(5,5), (164,0)]
 
 #east, west, south, north, slab
 roof=[(114,0), (114,1),(114,2), (114,3), (44,6)]
@@ -245,30 +245,33 @@ class Partition :
     
     
     def buildFurnitures(self, style, model, width):
-        self.listOfFurnitures.append(self.makeBed())
+        fixedX=fixedZ=-1
+        if self.wealth==2: height=6
+        else: height=1
+        
+        self.listOfFurnitures.append((self.makeBed(), (fixedX, height, fixedZ)))
         sink=[[[(118,3)]]]
         
         bonusFurniture=[1,2,3,4]
         
         
-        
         for n in range(self.wealth+2):
-            #shelf, bathtub, sink, couch
+            #shelf, sinkFirstFloor, sinkSecondFloor, couch
             newF=rd.randint(1,4)
+            fixedX=fixedZ=-1
             while not newF in bonusFurniture:
                 newF=rd.randint(1,4)
                 
-            fixedX=fixedZ=None
             if newF==1:
-                self.listOfFurnitures.append(self.makeShelf(style[1]))
                 fixedZ=[1, self.size-2]
+                self.listOfFurnitures.append((self.makeShelf(style[1]), (fixedX, 1, fixedZ)))
             if newF==2:
-                self.listOfFurnitures.append(sink)
+                self.listOfFurnitures.append((sink, (fixedX, 1, fixedZ)))
             if newF==3:
-                self.listOfFurnitures.append(sink)
+                self.listOfFurnitures.append((sink, (fixedX, height, fixedZ)))
             if newF==4:
-                self.listOfFurnitures.append(self.makeCouch(style))
                 fixedX=[1, width-2]
+                self.listOfFurnitures.append((self.makeCouch(style), (fixedX, 1, fixedZ)))
             
             bonusFurniture.remove(newF)
             
@@ -280,21 +283,21 @@ class Partition :
         freeCoord.remove((2,1))
         
         for f in self.listOfFurnitures:
-            if (fixedX is not None and fixedZ is not None):
-                freeCoordTemp=[ i for i in freeCoord if i[0]==fixedX and i[1]==fixedZ]
-            elif fixedZ is not None:
-                freeCoordTemp=[ i for i in freeCoord if i[1]==fixedZ]
-            elif fixedX is not None:
-                freeCoordTemp=[ i for i in freeCoord if i[0]==fixedX]
+            fixedX=f[1][0]
+            fixedZ=f[1][2]
+            if (fixedX!=-1 and fixedZ!=-1):
+                freeCoordTemp=[ i for i in freeCoord if (i[0] in fixedX) and (i[1] in fixedZ)]
+            elif (fixedX != -1):
+                freeCoordTemp=[ i for i in freeCoord if (i[0] in fixedX)]
+            elif (fixedZ != -1):
+                freeCoordTemp=[ i for i in freeCoord if (i[1] in fixedZ)]
             else: freeCoordTemp=[ i for i in freeCoord]
-            
-            #faire une liste de tuples avec (matrice, fixedX, fixedZ) pour chaque meuble
             
             if (len(freeCoordTemp)>0):
                 randx, randz= rd.choice(freeCoordTemp)
                 build=True
                 
-                while (not isSpaceFree(model, f, randx, 1, randz)):
+                while (not isSpaceFree(model, f[0], randx, f[1][1], randz)):
                     if (len(freeCoordTemp)>1 and (randx, randz) in freeCoordTemp):
                         freeCoordTemp.remove((randx, randz))
                         randx, randz= rd.choice(freeCoordTemp)
@@ -303,7 +306,7 @@ class Partition :
                         break
                  
                 if build:
-                    model, freeCoord = integrateMatrix(model, f, randx, 1,randz, freeCoord)
+                    model, freeCoord = integrateMatrix(model, f[0], randx, f[1][1],randz, freeCoord)
         
         return model
     
@@ -515,7 +518,7 @@ def isSpaceFree(bigMatrix, tinyMatrix, x,y,z):
         for j in range (len(tinyMatrix[0])):
             for k in range(len(tinyMatrix[0][0])):
                 if not (coordinatesInsideMatrix(bigMatrix, x+i, y+j, z+k)
-                 and (bigMatrix[x+i][y+j][z+k][0]==0
-                 or bigMatrix[x+i][y+j][z+k] is None)):
+                 and (bigMatrix[x+i][y+j][z+k] is None
+                 or bigMatrix[x+i][y+j][z+k][0]==0)):
                     return False
     return True
